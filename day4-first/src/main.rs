@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::io::{self, BufRead};
+use std::time::Instant;
 use std::{fs::File, path::Path};
 
 use regex::Regex;
@@ -57,9 +58,13 @@ fn parse_cards(lines: io::Lines<io::BufReader<File>>) -> i32 {
 }
 
 fn main() {
+    let now = Instant::now();
+
     if let Ok(lines) = read_lines("./puzzle.input") {
         println!("Total win sum is {}", parse_cards(lines));
     }
+
+    println!("Duration: {}", now.elapsed().as_millis());
 }
 
 #[cfg(test)]
