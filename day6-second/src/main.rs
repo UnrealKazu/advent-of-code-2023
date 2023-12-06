@@ -32,7 +32,7 @@ fn process_input(input: Vec<String>) -> (u64, u64) {
     (times, distances)
 }
 
-fn process_races(race: (u64, u64)) -> u64 {
+fn process_race(race: (u64, u64)) -> u64 {
     let mut mult = 0;
 
     for i in (1..race.0 - 1).rev() {
@@ -46,7 +46,7 @@ fn process_races(race: (u64, u64)) -> u64 {
 
 fn main() {
     let race = process_input(read_lines("./puzzle.input"));
-    let num = process_races(race);
+    let num = process_race(race);
 
-    println!("Race multiplication number {}", num);
+    println!("Number of wins {}", num);
 }
