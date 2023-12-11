@@ -53,8 +53,8 @@ impl fmt::Display for Universe {
 }
 
 impl Universe {
-    // loop over all lines and expand them (i.e. double them) if they're empty
-    fn expand_empty_lines(&mut self) {
+    // loop over all lines and mark them if they're empty
+    fn mark_empty_lines(&mut self) {
         let empty_reg = Regex::new(r"^\.+$").unwrap();
 
         for line in &mut self.map {
@@ -109,38 +109,45 @@ impl Universe {
                 // loop over the entire x1 to x2 and y1 to y2 to check if there are empty cells
                 let mut nrof_empty = 0;
 
-                // check a vertical line from x1 to x2 to see if we're crossing any empty cells
+                let x_lower;
+                let x_upper;
+
                 if gal1.position.x < gal2.position.x {
-                    for x in gal1.position.x + 1..gal2.position.x {
-                        if self.map.get(x).unwrap().get(gal1.position.y).unwrap().empty {
-                            nrof_empty += 1;
-                        }
-                    }
+                    x_lower = gal1.position.x + 1;
+                    x_upper = gal2.position.x;
                 } else {
-                    for x in gal2.position.x + 1..gal1.position.x {
-                        if self.map.get(x).unwrap().get(gal2.position.y).unwrap().empty {
-                            nrof_empty += 1;
-                        }
+                    x_lower = gal2.position.x + 1;
+                    x_upper = gal1.position.x;
+                }
+
+                // check a vertical line from x1 to x2 to see if we're crossing any empty cells
+                for x in x_lower..x_upper {
+                    if self.map.get(x).unwrap().get(gal2.position.y).unwrap().empty {
+                        nrof_empty += 1;
                     }
                 }
 
-                // check a horizontal line from y1 to y2 to see if we're crossing any empty cells
+                let y_lower;
+                let y_upper;
+
                 if gal1.position.y < gal2.position.y {
-                    for y in gal1.position.y + 1..gal2.position.y {
-                        if self.map.get(gal1.position.x).unwrap().get(y).unwrap().empty {
-                            nrof_empty += 1;
-                        }
-                    }
+                    y_lower = gal1.position.y + 1;
+                    y_upper = gal2.position.y;
                 } else {
-                    for y in gal2.position.y + 1..gal1.position.y {
-                        if self.map.get(gal2.position.x).unwrap().get(y).unwrap().empty {
-                            nrof_empty += 1;
-                        }
+                    y_lower = gal2.position.y + 1;
+                    y_upper = gal1.position.y;
+                }
+
+                // check a horizontal line from y1 to y2 to see if we're crossing any empty cells
+                for y in y_lower..y_upper {
+                    if self.map.get(gal1.position.x).unwrap().get(y).unwrap().empty {
+                        nrof_empty += 1;
                     }
                 }
 
                 let non_empty_length = path_length(gal1, gal2);
 
+                // add the empty cells as expansion rate factor to the direct path
                 sum_min_length += non_empty_length + (nrof_empty * (EXPANSION_RATE - 1))
             }
         }
@@ -177,7 +184,7 @@ fn parse_input(path: &str) -> Universe {
     }
 
     universe.transpose_map();
-    universe.expand_empty_lines();
+    universe.mark_empty_lines();
     universe.transpose_map();
 
     universe.store_galaxies();
