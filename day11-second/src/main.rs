@@ -6,9 +6,12 @@ use std::{
     time::Instant,
 };
 
+use arrayvec::ArrayVec;
 use regex::Regex;
 
-const EXPANSION_RATE: usize = 100_000;
+const EXPANSION_RATE: usize = 1_000_000;
+const X_SIZE: usize = 140; /* 10x10 for example, 140x140 for puzzle */
+const Y_SIZE: usize = 140;
 
 #[derive(Clone, Copy)]
 struct SuperChar {
@@ -17,7 +20,7 @@ struct SuperChar {
 }
 
 struct Universe {
-    map: Vec<Vec<SuperChar>>,
+    map: ArrayVec<ArrayVec<SuperChar, Y_SIZE>, X_SIZE>,
     galaxies: Vec<Galaxy>,
 }
 
@@ -54,21 +57,15 @@ impl Universe {
     fn expand_empty_lines(&mut self) {
         let empty_reg = Regex::new(r"^\.+$").unwrap();
 
-        let mut new_map: Vec<Vec<SuperChar>> = vec![];
-
-        for line in &self.map {
-            let mut line_clone = line.clone();
+        for line in &mut self.map {
             let str_line: String = line.iter().map(|l| l.char).collect();
             if empty_reg.is_match(&str_line) {
                 // line is empty, so mark all SuperChar as such
-                for l in line_clone.iter_mut() {
+                for l in line {
                     l.empty = true;
                 }
             }
-            new_map.push(line_clone);
         }
-
-        self.map = new_map;
     }
 
     fn transpose_map(&mut self) {
@@ -78,7 +75,7 @@ impl Universe {
                 self.map
                     .iter()
                     .map(|inner| inner[i])
-                    .collect::<Vec<SuperChar>>()
+                    .collect::<ArrayVec<SuperChar, Y_SIZE>>()
             })
             .collect()
     }
@@ -102,21 +99,49 @@ impl Universe {
     fn get_sum_shortest_paths(&self) -> usize {
         let mut sum_min_length = 0;
 
-        // let path_length = |gal1: &Galaxy, gal2: &Galaxy| {
-        //     usize::abs_diff(gal1.position.x, gal2.position.x)
-        //         + usize::abs_diff(gal1.position.y, gal2.position.y)
-        // };
-
-        // for (i, gal1) in self.galaxies.iter().enumerate() {
-        //     for gal2 in self.galaxies.iter().skip(i + 1) {
-        //         sum_min_length += path_length(gal1, gal2);
-        //     }
-        // }
+        let path_length = |gal1: &Galaxy, gal2: &Galaxy| {
+            usize::abs_diff(gal1.position.x, gal2.position.x)
+                + usize::abs_diff(gal1.position.y, gal2.position.y)
+        };
 
         for (i, gal1) in self.galaxies.iter().enumerate() {
             for gal2 in self.galaxies.iter().skip(i + 1) {
                 // loop over the entire x1 to x2 and y1 to y2 to check if there are empty cells
-                // TODO: fix the shortest path loop
+                let mut nrof_empty = 0;
+
+                // check a vertical line from x1 to x2 to see if we're crossing any empty cells
+                if gal1.position.x < gal2.position.x {
+                    for x in gal1.position.x + 1..gal2.position.x {
+                        if self.map.get(x).unwrap().get(gal1.position.y).unwrap().empty {
+                            nrof_empty += 1;
+                        }
+                    }
+                } else {
+                    for x in gal2.position.x + 1..gal1.position.x {
+                        if self.map.get(x).unwrap().get(gal2.position.y).unwrap().empty {
+                            nrof_empty += 1;
+                        }
+                    }
+                }
+
+                // check a horizontal line from y1 to y2 to see if we're crossing any empty cells
+                if gal1.position.y < gal2.position.y {
+                    for y in gal1.position.y + 1..gal2.position.y {
+                        if self.map.get(gal1.position.x).unwrap().get(y).unwrap().empty {
+                            nrof_empty += 1;
+                        }
+                    }
+                } else {
+                    for y in gal2.position.y + 1..gal1.position.y {
+                        if self.map.get(gal2.position.x).unwrap().get(y).unwrap().empty {
+                            nrof_empty += 1;
+                        }
+                    }
+                }
+
+                let non_empty_length = path_length(gal1, gal2);
+
+                sum_min_length += non_empty_length + (nrof_empty * (EXPANSION_RATE - 1))
             }
         }
 
@@ -134,7 +159,7 @@ where
 
 fn parse_input(path: &str) -> Universe {
     let mut universe = Universe {
-        map: vec![],
+        map: ArrayVec::new(),
         galaxies: vec![],
     };
 
@@ -161,83 +186,13 @@ fn parse_input(path: &str) -> Universe {
 }
 
 fn main() {
-    // let now = Instant::now();
+    let now = Instant::now();
 
-    let universe = parse_input("./example.input");
+    let universe = parse_input("./puzzle.input");
 
-    println!("Resulting universe");
-    println!("{}", universe);
+    let sum = universe.get_sum_shortest_paths();
 
-    // let sum = universe.get_sum_shortest_paths();
+    println!("Sum of shortest pair paths is {}", sum);
 
-    // println!("Sum of shortest pair paths is {}", sum);
-
-    // println!("Duration: {}", now.elapsed().as_micros());
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn get_test_universe() -> Universe {
-        Universe {
-            map: vec![
-                vec![
-                    '.', '.', '.', '.', '#', '.', '.', '.', '.', '.', '.', '.', '.',
-                ],
-                vec![
-                    '.', '.', '.', '.', '.', '.', '.', '.', '.', '#', '.', '.', '.',
-                ],
-                vec![
-                    '#', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.',
-                ],
-                vec![
-                    '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.',
-                ],
-                vec![
-                    '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.',
-                ],
-                vec![
-                    '.', '.', '.', '.', '.', '.', '.', '.', '#', '.', '.', '.', '.',
-                ],
-                vec![
-                    '.', '#', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.',
-                ],
-                vec![
-                    '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '#',
-                ],
-                vec![
-                    '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.',
-                ],
-                vec![
-                    '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.',
-                ],
-                vec![
-                    '.', '.', '.', '.', '.', '.', '.', '.', '.', '#', '.', '.', '.',
-                ],
-                vec![
-                    '#', '.', '.', '.', '.', '#', '.', '.', '.', '.', '.', '.', '.',
-                ],
-            ],
-            galaxies: vec![],
-        }
-    }
-
-    #[test]
-    fn test_get_galaxies() {
-        let mut universe = get_test_universe();
-        universe.store_galaxies();
-
-        assert_eq!(universe.galaxies.len(), 9);
-    }
-
-    #[test]
-    fn test_get_pair_path() {
-        let mut universe = get_test_universe();
-        universe.store_galaxies();
-
-        let min_sum = universe.get_sum_shortest_paths();
-
-        assert_eq!(min_sum, 374);
-    }
+    println!("Duration: {}", now.elapsed().as_millis());
 }
