@@ -248,6 +248,13 @@ fn get_possible_distinct_combinations(workflows: HashMap<String, Workflow>) -> u
                     }
                     _ => panic!("Unexpected operator"),
                 }
+
+                if let State::Passed(new_state) = &part.state {
+                    if old_state != *new_state {
+                        // the state has changed, so we can break from checking other rules
+                        break;
+                    }
+                }
             }
 
             if let State::Passed(new_state) = &part.state {
